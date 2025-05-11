@@ -1,0 +1,302 @@
+// Directory structure (assuming json-server setup for events only)
+// event-app/
+// ├── public/
+// │   └── db.json
+// ├── src/
+// │   ├── components/
+// │   │   ├── Login.js
+// │   │   ├── Signup.js
+// │   │   ├── StepOne.js
+// │   │   ├── StepTwo.js
+// │   │   ├── Dashboard.js
+// │   │   ├── EventCard.js
+// │   │   └── EventDetails.js
+// │   ├── App.js
+// │   └── index.js
+
+// Steps to run:
+// 1. Create the project
+//    npx create-react-app event-app && cd event-app
+// 2. Add axios & react-router-dom
+//    npm install axios react-router-dom
+// 3. Install and run json-server
+//    npm install -g json-server
+//    Create db.json file in public directory with event data
+//    json-server --watch public/db.json --port 5000
+
+// Sample db.json (for events only)
+{
+  "events": [
+    {
+      "id": 1,
+      "title": "React Conference",
+      "type": "Conference",
+      "description": "A conference about React.",
+      "location": "New York",
+      "organiser": "ReactOrg",
+      "date": "2025-06-15",
+      "registeredUsers": [1]
+    }
+  ]
+}
+
+// src/components/Login.js
+import React, { useState } from 'react';
+import axios from 'axios';
+import { useNavigate } from 'react-router-dom';
+
+const Login = () => {
+  const [username, setUsername] = useState('');
+  const [password, setPassword] = useState('');
+  const [loading, setLoading] = useState(false);
+  const navigate = useNavigate();
+
+  const handleLogin = async () => {
+    setLoading(true);
+    try {
+      const res = await axios.post('https://fakestoreapi.com/auth/login', {
+        username,
+        password,
+      });
+      localStorage.setItem('token', res.data.token);
+      localStorage.setItem('username', username);
+      navigate('/dashboard');
+    } catch (e) {
+      alert('Invalid credentials');
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  return (
+    <div>
+      <h2>Login</h2>
+      <input value={username} onChange={e => setUsername(e.target.value)} placeholder="Username" />
+      <input value={password} onChange={e => setPassword(e.target.value)} placeholder="Password" type="password" />
+      <button onClick={handleLogin} disabled={loading}>{loading ? 'Logging in...' : 'Login'}</button>
+    </div>
+  );
+};
+export default Login;
+
+// src/components/Signup.js (same structure as earlier, POST to fakestoreapi.com/users)
+// src/components/Dashboard.js (Module 2: Event listing from json-server)
+import React, { useEffect, useState } from 'react';
+import axios from 'axios';
+import { useNavigate } from 'react-router-dom';
+
+const Dashboard = () => {
+  const [events, setEvents] = useState([]);
+  const [filter, setFilter] = useState('All');
+  const navigate = useNavigate();
+
+  useEffect(() => {
+    axios.get('http://localhost:5000/events').then(res => setEvents(res.data));
+  }, []);
+
+  const filteredEvents = events.filter(e => (filter === 'All' ? true : e.type === filter));
+
+  return (
+    <div>
+      <h2>Events Dashboard</h2>
+      <div>
+        {['All', 'Festival', 'Conference', 'Playground'].map(f => (
+          <button key={f} onClick={() => setFilter(f)}>{f}</button>
+        ))}
+      </div>
+      <div>
+        {filteredEvents.map(e => (
+          <div key={e.id}>
+            <h3>{e.title}</h3>
+            <p>{e.description}</p>
+            <button onClick={() => navigate(`/event/${e.id}`)}>Details</button>
+          </div>
+        ))}
+      </div>
+    </div>
+  );
+};
+export default Dashboard;
+
+// src/components/EventDetails.js (Module 3: Event details and registration to json-server)
+import React, { useEffect, useState } from 'react';
+import { useParams } from 'react-router-dom';
+import axios from 'axios';
+
+const EventDetails = () => {
+  const { id } = useParams();
+  const [event, setEvent] = useState(null);
+  const username = localStorage.getItem('username');
+
+  useEffect(() => {
+    axios.get(`http://localhost:5000/events/${id}`).then(res => setEvent(res.data));
+  }, [id]);
+
+  const handleRegister = () => {
+    const updated = {
+      ...event,
+      registeredUsers: [...(event.registeredUsers || []), username]
+    };
+    axios.put(`http://localhost:5000/events/${id}`, updated).then(() => setEvent(updated));
+  };
+
+  if (!event) return <p>Loading...</p>;
+
+  const isRegistered = event.registeredUsers?.includes(username);
+
+  return (
+    <div>
+      <h2>{event.title}</h2>
+      <p>{event.description}</p>
+      <p>Location: {event.location}</p>
+      <button onClick={handleRegister} disabled={isRegistered}>
+        {isRegistered ? 'Registered' : 'Register'}
+      </button>
+    </div>
+  );
+};
+export default EventDetails;
+
+// src/App.js
+import React from 'react';
+import { BrowserRouter, Routes, Route } from 'react-router-dom';
+import Login from './components/Login';
+import Signup from './components/Signup';
+import Dashboard from './components/Dashboard';
+import EventDetails from './components/EventDetails';
+
+function App() {
+  return (
+    <BrowserRouter>
+      <Routes>
+        <Route path="/" element={<Login />} />
+        <Route path="/signup" element={<Signup />} />
+        <Route path="/dashboard" element={<Dashboard />} />
+        <Route path="/event/:id" element={<EventDetails />} />
+      </Routes>
+    </BrowserRouter>
+  );
+}
+
+export default App;
+
+
+
+// Updates for Milestones 4 and 5 with Bootstrap integration
+// Install Bootstrap: npm install bootstrap
+// Add to index.js: import 'bootstrap/dist/css/bootstrap.min.css';
+
+// Milestone 4: Event Creation Page
+// src/components/CreateEvent.js
+import React, { useState } from 'react';
+import axios from 'axios';
+import { useNavigate } from 'react-router-dom';
+
+const CreateEvent = () => {
+  const [event, setEvent] = useState({
+    title: '', type: '', description: '', location: '', organiser: '', date: '', registeredUsers: []
+  });
+  const navigate = useNavigate();
+
+  const handleSubmit = async () => {
+    await axios.post('http://localhost:5000/events', event);
+    alert('Event created successfully');
+    navigate('/dashboard');
+  };
+
+  const isFormValid = Object.values(event).every(val => val !== '');
+
+  return (
+    <div className="container mt-4">
+      <h2>Create Event</h2>
+      <div className="form-group">
+        <input className="form-control mb-2" placeholder="Title" value={event.title} onChange={e => setEvent({ ...event, title: e.target.value })} />
+        <select className="form-control mb-2" value={event.type} onChange={e => setEvent({ ...event, type: e.target.value })}>
+          <option value="">Select Type</option>
+          <option value="Festival">Festival</option>
+          <option value="Conference">Conference</option>
+          <option value="Playground">Playground</option>
+        </select>
+        <input className="form-control mb-2" placeholder="Location" value={event.location} onChange={e => setEvent({ ...event, location: e.target.value })} />
+        <input className="form-control mb-2" placeholder="Organiser" value={event.organiser} onChange={e => setEvent({ ...event, organiser: e.target.value })} />
+        <input className="form-control mb-2" placeholder="Date" type="date" value={event.date} onChange={e => setEvent({ ...event, date: e.target.value })} />
+        <textarea className="form-control mb-2" placeholder="Description" value={event.description} onChange={e => setEvent({ ...event, description: e.target.value })} />
+        <button className="btn btn-primary" onClick={handleSubmit} disabled={!isFormValid}>Create Event</button>
+      </div>
+    </div>
+  );
+};
+export default CreateEvent;
+
+// Milestone 5: Analytics Page
+// src/components/Analytics.js
+import React, { useEffect, useState } from 'react';
+import axios from 'axios';
+
+const Analytics = () => {
+  const [events, setEvents] = useState([]);
+
+  useEffect(() => {
+    axios.get('http://localhost:5000/events').then(res => setEvents(res.data));
+  }, []);
+
+  const countByStatus = (status) => {
+    const today = new Date();
+    return events.filter(event => {
+      const eventDate = new Date(event.date);
+      return status === 'Upcoming' ? eventDate > today : eventDate <= today;
+    }).length;
+  };
+
+  return (
+    <div className="container mt-4">
+      <h2>Event Overview</h2>
+      <div className="row mb-4">
+        <div className="col"><strong>Total:</strong> {events.length}</div>
+        <div className="col"><strong>Upcoming:</strong> {countByStatus('Upcoming')}</div>
+        <div className="col"><strong>Completed:</strong> {countByStatus('Completed')}</div>
+      </div>
+      <table className="table table-bordered">
+        <thead className="thead-dark">
+          <tr>
+            <th>ID</th><th>Title</th><th>Description</th><th>Date</th><th>Location</th><th>Organiser</th><th>Type</th><th>Status</th>
+          </tr>
+        </thead>
+        <tbody>
+          {events.map(e => (
+            <tr key={e.id}>
+              <td>{e.id}</td>
+              <td>{e.title}</td>
+              <td>{e.description}</td>
+              <td>{e.date}</td>
+              <td>{e.location}</td>
+              <td>{e.organiser}</td>
+              <td>{e.type}</td>
+              <td>{new Date(e.date) > new Date() ? 'Upcoming' : 'Completed'}</td>
+            </tr>
+          ))}
+        </tbody>
+      </table>
+    </div>
+  );
+};
+export default Analytics;
+
+// src/App.js (update to include routes for CreateEvent and Analytics)
+import CreateEvent from './components/CreateEvent';
+import Analytics from './components/Analytics';
+
+function App() {
+  return (
+    <BrowserRouter>
+      <Routes>
+        <Route path="/" element={<Login />} />
+        <Route path="/signup" element={<Signup />} />
+        <Route path="/dashboard" element={<Dashboard />} />
+        <Route path="/event/:id" element={<EventDetails />} />
+        <Route path="/create" element={<CreateEvent />} />
+        <Route path="/analytics" element={<Analytics />} />
+      </Routes>
+    </BrowserRouter>
+  );
+}
