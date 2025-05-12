@@ -1,0 +1,184 @@
+// COMPLETE ENHANCED UI IMPLEMENTATION for Milestones 1-5
+// ---------------------------------------------------------
+// Ensure Bootstrap is installed: npm install bootstrap
+// And imported in index.js: import 'bootstrap/dist/css/bootstrap.min.css';
+
+// Additional: Create custom.css inside src/ and import in index.js for custom styles
+// Example: import './custom.css';
+// custom.css:
+// .card:hover { box-shadow: 0 4px 20px rgba(0, 0, 0, 0.2); transition: 0.3s; }
+
+// src/components/Dashboard.js (Enhanced Events Page)
+import React, { useEffect, useState } from 'react';
+import axios from 'axios';
+import { useNavigate } from 'react-router-dom';
+
+const Dashboard = () => {
+  const [events, setEvents] = useState([]);
+  const [filter, setFilter] = useState('All');
+  const navigate = useNavigate();
+
+  useEffect(() => {
+    axios.get('http://localhost:5000/events').then(res => setEvents(res.data));
+  }, []);
+
+  const filteredEvents = events.filter(e => filter === 'All' || e.type === filter);
+
+  return (
+    <div className="container py-4">
+      <div className="d-flex justify-content-between align-items-center mb-4">
+        <h2 className="text-primary">All Events</h2>
+        <div>
+          <button className="btn btn-outline-secondary me-2" onClick={() => navigate('/create')}>+ Create Event</button>
+          <button className="btn btn-outline-info" onClick={() => navigate('/analytics')}>📊 Analytics</button>
+        </div>
+      </div>
+      <div className="btn-group mb-4">
+        {['All', 'Festival', 'Conference', 'Playground'].map(f => (
+          <button className={`btn ${filter === f ? 'btn-primary' : 'btn-outline-primary'}`} key={f} onClick={() => setFilter(f)}>{f}</button>
+        ))}
+      </div>
+      <div className="row">
+        {filteredEvents.map(e => (
+          <div className="col-md-4 mb-4" key={e.id}>
+            <div className="card h-100 shadow-sm">
+              <div className="card-body d-flex flex-column">
+                <h5 className="card-title">{e.title}</h5>
+                <p className="card-text text-muted">{e.description}</p>
+                <p className="mb-1"><strong>Date:</strong> {e.date}</p>
+                <p className="mb-3"><strong>Location:</strong> {e.location}</p>
+                <button className="btn btn-outline-primary mt-auto" onClick={() => navigate(`/event/${e.id}`)}>Tickets & Details</button>
+              </div>
+            </div>
+          </div>
+        ))}
+      </div>
+    </div>
+  );
+};
+export default Dashboard;
+
+// src/components/CreateEvent.js (Enhanced Create Event Page)
+import React, { useState } from 'react';
+import axios from 'axios';
+import { useNavigate } from 'react-router-dom';
+
+const CreateEvent = () => {
+  const [event, setEvent] = useState({
+    title: '', type: '', description: '', location: '', organiser: '', date: '', registeredUsers: []
+  });
+  const navigate = useNavigate();
+
+  const handleSubmit = async () => {
+    await axios.post('http://localhost:5000/events', event);
+    alert('Event created successfully');
+    navigate('/dashboard');
+  };
+
+  const isFormValid = Object.values(event).every(val => val !== '');
+
+  return (
+    <div className="container py-4">
+      <h2 className="text-success mb-4">Create New Event</h2>
+      <div className="card shadow p-4">
+        <div className="row">
+          <div className="col-md-6 mb-3">
+            <input className="form-control" placeholder="Event Title" value={event.title} onChange={e => setEvent({ ...event, title: e.target.value })} />
+          </div>
+          <div className="col-md-6 mb-3">
+            <select className="form-select" value={event.type} onChange={e => setEvent({ ...event, type: e.target.value })}>
+              <option value="">Select Type</option>
+              <option value="Festival">Festival</option>
+              <option value="Conference">Conference</option>
+              <option value="Playground">Playground</option>
+            </select>
+          </div>
+          <div className="col-md-6 mb-3">
+            <input className="form-control" placeholder="Location" value={event.location} onChange={e => setEvent({ ...event, location: e.target.value })} />
+          </div>
+          <div className="col-md-6 mb-3">
+            <input className="form-control" placeholder="Organiser" value={event.organiser} onChange={e => setEvent({ ...event, organiser: e.target.value })} />
+          </div>
+          <div className="col-md-6 mb-3">
+            <input className="form-control" type="date" value={event.date} onChange={e => setEvent({ ...event, date: e.target.value })} />
+          </div>
+          <div className="col-md-12 mb-3">
+            <textarea className="form-control" placeholder="Event Description" rows="4" value={event.description} onChange={e => setEvent({ ...event, description: e.target.value })} />
+          </div>
+        </div>
+        <button className="btn btn-success w-100 mt-3" onClick={handleSubmit} disabled={!isFormValid}>Create Event</button>
+      </div>
+    </div>
+  );
+};
+export default CreateEvent;
+
+// src/components/Analytics.js (Enhanced Analytics Page)
+import React, { useEffect, useState } from 'react';
+import axios from 'axios';
+
+const Analytics = () => {
+  const [events, setEvents] = useState([]);
+
+  useEffect(() => {
+    axios.get('http://localhost:5000/events').then(res => setEvents(res.data));
+  }, []);
+
+  const countByStatus = (status) => {
+    const today = new Date();
+    return events.filter(event => {
+      const eventDate = new Date(event.date);
+      return status === 'Upcoming' ? eventDate > today : eventDate <= today;
+    }).length;
+  };
+
+  return (
+    <div className="container py-4">
+      <h2 className="text-info mb-4">Events Overview</h2>
+      <div className="row mb-4 text-center">
+        <div className="col-md-4">
+          <div className="p-3 bg-light border rounded shadow-sm">
+            <h4 className="text-secondary">Total</h4>
+            <h2>{events.length}</h2>
+          </div>
+        </div>
+        <div className="col-md-4">
+          <div className="p-3 bg-success text-white border rounded shadow-sm">
+            <h4>Upcoming</h4>
+            <h2>{countByStatus('Upcoming')}</h2>
+          </div>
+        </div>
+        <div className="col-md-4">
+          <div className="p-3 bg-danger text-white border rounded shadow-sm">
+            <h4>Completed</h4>
+            <h2>{countByStatus('Completed')}</h2>
+          </div>
+        </div>
+      </div>
+      <div className="table-responsive">
+        <table className="table table-hover table-bordered">
+          <thead className="table-dark">
+            <tr>
+              <th>ID</th><th>Title</th><th>Description</th><th>Date</th><th>Location</th><th>Organiser</th><th>Type</th><th>Status</th>
+            </tr>
+          </thead>
+          <tbody>
+            {events.map(e => (
+              <tr key={e.id}>
+                <td>{e.id}</td>
+                <td>{e.title}</td>
+                <td>{e.description}</td>
+                <td>{e.date}</td>
+                <td>{e.location}</td>
+                <td>{e.organiser}</td>
+                <td>{e.type}</td>
+                <td>{new Date(e.date) > new Date() ? 'Upcoming' : 'Completed'}</td>
+              </tr>
+            ))}
+          </tbody>
+        </table>
+      </div>
+    </div>
+  );
+};
+export default Analytics;
