@@ -114,15 +114,35 @@ const CreateEvent = () => {
 export default CreateEvent;
 
 // src/components/Analytics.js (Enhanced Analytics Page)
+// src/components/Analytics.js (Enhanced Analytics Page with Yearly Graph)
 import React, { useEffect, useState } from 'react';
 import axios from 'axios';
+import {
+  BarChart, Bar, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer
+} from 'recharts';
 
 const Analytics = () => {
   const [events, setEvents] = useState([]);
+  const [selectedYear, setSelectedYear] = useState(new Date().getFullYear());
+  const [yearlyData, setYearlyData] = useState([]);
 
   useEffect(() => {
     axios.get('http://localhost:5000/events').then(res => setEvents(res.data));
   }, []);
+
+  useEffect(() => {
+    const months = Array(12).fill(0);
+    events.forEach(event => {
+      const date = new Date(event.date);
+      if (date.getFullYear() === parseInt(selectedYear)) {
+        months[date.getMonth()]++;
+      }
+    });
+    const data = months.map((count, index) => ({ month: new Date(0, index).toLocaleString('default', { month: 'short' }), count }));
+    setYearlyData(data);
+  }, [events, selectedYear]);
+
+  const yearsAvailable = [...new Set(events.map(e => new Date(e.date).getFullYear()))];
 
   const countByStatus = (status) => {
     const today = new Date();
@@ -135,6 +155,7 @@ const Analytics = () => {
   return (
     <div className="container py-4">
       <h2 className="text-info mb-4">Events Overview</h2>
+
       <div className="row mb-4 text-center">
         <div className="col-md-4">
           <div className="p-3 bg-light border rounded shadow-sm">
@@ -155,6 +176,26 @@ const Analytics = () => {
           </div>
         </div>
       </div>
+
+      <div className="mb-4">
+        <label htmlFor="yearSelect" className="form-label">Select Year:</label>
+        <select id="yearSelect" className="form-select w-auto d-inline-block ms-2" value={selectedYear} onChange={e => setSelectedYear(e.target.value)}>
+          {yearsAvailable.map(year => (
+            <option key={year} value={year}>{year}</option>
+          ))}
+        </select>
+      </div>
+
+      <ResponsiveContainer width="100%" height={300} className="mb-5">
+        <BarChart data={yearlyData} margin={{ top: 20, right: 30, left: 0, bottom: 5 }}>
+          <CartesianGrid strokeDasharray="3 3" />
+          <XAxis dataKey="month" />
+          <YAxis />
+          <Tooltip />
+          <Bar dataKey="count" fill="#007bff" />
+        </BarChart>
+      </ResponsiveContainer>
+
       <div className="table-responsive">
         <table className="table table-hover table-bordered">
           <thead className="table-dark">
@@ -182,3 +223,9 @@ const Analytics = () => {
   );
 };
 export default Analytics;
+
+// Required Installation: npm install recharts
+
+
+
+
